@@ -162,7 +162,7 @@ const issueCert = async function (
   logger.debug(_tokenId);
   //logger.debug(BigNumber(_tokenId))
   let tokenOwner = ethers.utils.formatBytes32String(_tokenOwner);
-  let tokenId = web3Util.stringToIntEncode(_groupId + _tokenId);
+  let tokenId = web3Util.stringToIntEncode(_tokenId);
 
   await noncemanager
     .getInstance()
