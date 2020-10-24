@@ -12,17 +12,20 @@ const config = require("./config");
 const db = require("./mongoConnection");
 const bearerToken = require("express-bearer-token");
 const authenticateUser = require("./middleware/authenticateUser");
+
 const healthRouter = require("./controllers/Health");
+// Below Controller Imports should be an express{Router} instance
+const adminRoutes = require('./controllers/Admin');
+const certRoutes = require('./controllers/Cert');
+const trackRoutes = require('./controllers/Track');
 
-// import global app routes
 
-const routes = require("./routes");
 const { port } = config;
 
 app.locals.db = db;
 
 app.use(compression());
-//app.use(responseTime());
+
 
 /*
  * Add cors
@@ -47,23 +50,21 @@ app.use(
   })
 );
 
-// Health check
+// Public Routes
 app.use("/status", healthRouter);
+app.use('/livecopycert', trackRoutes);
 
 app.use(authenticateUser);
 
-/*
- * Add routes here
- */
-app.use("/", routes);
+// Secure Routes
+app.use('/livecopycert', certRoutes);
+app.use('/livecopyadmin', adminRoutes);
 
 /*
  * Start the server
  */
-
 const server = http.createServer(app);
 
-// app.use(injectApplicationConstants)
 
 server.listen(port, function () {});
 
