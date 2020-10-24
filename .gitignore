@@ -104,8 +104,10 @@ dist
 .tern-port
 
 #ignore config files
-*/config/*.json
+config/*.json
 */truffle-config.js
 
 #ignore SmartContract Build files
-*/build
+*/build/
+
+temp/
