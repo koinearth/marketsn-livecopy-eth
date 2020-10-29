@@ -1,0 +1,12 @@
+{
+  "port": 5000,
+  "version": "1.0.0",
+  "mongoUrl": "",
+  "dbUsername": "",
+  "dbPassword": "",
+  "rpc": "",
+  "apiPrivKey": "",
+  "apiPubKey": "",
+  "orgMapping": {},
+  "contracts": {}
+}
