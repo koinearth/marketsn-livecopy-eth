@@ -46,10 +46,10 @@ contract CertToken is ERC721Enumerable, WhitelistedRole, CertData, Verifier {
         uint256 _tokenId,
         TokenData memory _tokenData
     ) public onlyWhitelisted {
-        require(tokenHash[_tokenData.hash] == 0, "Hash already existing");
+        require(tokenHash[_tokenData.ipfshash.digest] == 0, "Hash already existing");
         if (!_exists(_tokenId)) super._mint(_to, _tokenId);
         tokenData[_tokenId].push(_tokenData);
-        tokenHash[_tokenData.hash] = _tokenId;
+        tokenHash[_tokenData.ipfshash.digest] = _tokenId;
     }
 
     /**
@@ -65,10 +65,10 @@ contract CertToken is ERC721Enumerable, WhitelistedRole, CertData, Verifier {
         uint256 _tokenId,
         TokenData memory _tokenData
     ) public onlyWhitelisted {
-        require(tokenHash[_tokenData.hash] == 0, "Hash already existing");
+        require(tokenHash[_tokenData.ipfshash.digest] == 0, "Hash already existing");
         super._transferFrom(_from, _to, _tokenId);
         tokenData[_tokenId].push(_tokenData);
-        tokenHash[_tokenData.hash] = _tokenId;
+        tokenHash[_tokenData.ipfshash.digest] = _tokenId;
     }
 
     function getToken(uint256 _tokenId)

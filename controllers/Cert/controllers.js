@@ -3,30 +3,43 @@
 const logger = require("../../utils/logger");
 const adminW3I = require("../../w3i/w3i");
 const config = require("../../config");
+var ipfsAPI = require('ipfs-api')
+var ipfs = ipfsAPI({host: 'ipfs.infura.io', port: '5001', protocol: 'https'})
 
+const adddata = async({content}) => {
+  const file = {content :Buffer.from(content)};
+  const dataadded = await ipfs.add(file);
+  return dataadded[0].hash;
+
+}
 
 const issueCert = async function(req, res) {
-
+  let content = JSON.stringify(req.body.Data)
+  const ipfshash =  await adddata({"content":content})
+ logger.debug(ipfshash);
+  
   try {
     let result = await adminW3I.issueCert(
       req.body.GroupId,
       req.body.TokenOwner,
       req.body.TokenId,
-      req.body.Hash,
+      req.body.Data.Hash,
       req.body.SignerPublicKey,
       req.body.Signature,
-      req.body.State,
-      req.body.AssetType,
-      req.body.URL,
+      req.body.Data.State,
+      req.body.Data.AssetType,
+      req.body.Data.URL,
+      ipfshash,
       config.contracts.FACTORY.address,
       config.contracts.FACTORY.abi,
       config.contracts.ADMIN.abi
     );
+    console.log(config.port)
     
     logger.debug(result);
     
     if ((result = true))
-      return res.status(200).send({status : "success", code: "200", message: "Successfully submitted the transaction"});
+      return res.status(200).send({status : "success", code: "200", message: `Successfully submitted the transaction with ipfs hash =${ipfshash}`});
       else {
         let responseText = {
           status: 'error',

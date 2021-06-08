@@ -14,8 +14,7 @@ function getConnection() {
     let db = mongoose.createConnection(url, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      user: dbUsername,
-      pass: dbPassword,
+      
     });
     return db;
   } catch (e) {

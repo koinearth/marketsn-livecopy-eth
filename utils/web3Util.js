@@ -22,8 +22,11 @@ var nonceFunction = () => {
 const getContractInstance = function (_contractAddress, _ABI) {
   //return new web3.eth.Contract(_ABI, _contractAddress);
   let contract = new ethers.Contract(_contractAddress, _ABI, wallet);
+  
   return contract;
+  
 };
+// getContractInstance(config.contracts.TOKEN.address, config.contracts.TOKEN.abi)
 
 const stringToIntEncode = function (_id) {
   logger.debug(_id);

@@ -2,7 +2,7 @@
 
 const logger = require("../../utils/logger");
 const adminW3I = require("../../w3i/w3i");
-const config = require("../../config");
+const config = require("../../config/config.development.json");
 
 
 const getCert = async function(req, res) {
@@ -12,7 +12,9 @@ const getCert = async function(req, res) {
       req.query.TokenId,
       config.contracts.TOKEN.address,
       config.contracts.TOKEN.abi
+      
     );
+    console.log(result)
     logger.debug(result)
 
     let responseText = {
@@ -28,6 +30,8 @@ const getCert = async function(req, res) {
     if(err.reason == undefined)
     {
       logger.error(err);
+      console.log(config.contracts.TOKEN.address)
+      
       let responseText = {
         status: 'error',
         code: 422,

@@ -9,9 +9,11 @@ import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 import "./CertData.sol";
 import "./Verifier.sol";
 
+
 contract CertAdmin is WhitelistedRole, CertData, Verifier {
     ICertToken CertToken;
 
+  
     mapping(uint256 => mapping(bytes32 => TokenData)) tokenData;
     mapping(uint256 => mapping(bytes32 => uint256)) tokenStatus;
     mapping(uint256 => mapping(bytes32 => address)) tokerOwner;
@@ -19,10 +21,12 @@ contract CertAdmin is WhitelistedRole, CertData, Verifier {
     mapping(bytes32 => address) signerAddress;
     mapping(address => bytes32) signerAddressAlias;
 
-    uint256 minSignerRequired;
+   
 
+    uint256 minSignerRequired;
     address apiAddress;
     bytes32 groupId;
+    
 
     modifier onlyAPI() {
         require(
@@ -50,12 +54,19 @@ contract CertAdmin is WhitelistedRole, CertData, Verifier {
         groupId = _groupId;
     }
 
+    
+    function setIPFShash (bytes32 _digest, uint8 _hashFunction, uint8 _size) private returns (Multihash memory)
+    {
+        return Multihash(_digest, _hashFunction, _size);
+         
+    }
     /**
      * @dev public function to propose a cert by signer
-     * Reverts if the given token ID already exists.
+     * Reverts if the given token ID already exists.      
      * @param _toAlias The name of the address that will own the minted token
      * @param _tokenId uint256 ID of the token to be minted
      */
+
     function issueCert(
         bytes32 _toAlias,
         uint256 _tokenId,
@@ -64,10 +75,10 @@ contract CertAdmin is WhitelistedRole, CertData, Verifier {
         bytes32 _sigR,
         bytes32 _sigS,
         uint8 _sigV,
-        bytes32 _state,
-        bytes32 _assetType,
-        string memory _url
-    ) public onlyAPI {
+        bytes32 _digest,
+        uint8 _hashFunction,
+        uint8 _size
+        ) public onlyAPI returns (bytes32[]) {
         require(
             isWhitelisted(_signerPublicKey),
             "SignerRole: Signer does not have the Signer role"
@@ -78,60 +89,57 @@ contract CertAdmin is WhitelistedRole, CertData, Verifier {
         );
 
         address _to = signerAddress[_toAlias];
+        Multihash memory ipfshash = setIPFShash(_digest, _hashFunction, _size);
+        
+        TokenData memory _tokenData = tokenData[_tokenId];
+        bytes32[] oldipfs = _tokenData[0][0];
 
-        if (tokerOwner[_tokenId][_hash] == address(0))
-            tokerOwner[_tokenId][_hash] = _to;
+
+        uint256 ti = _tokenId;
+        
+
+        if (tokerOwner[ti][_hash] == address(0))
+            tokerOwner[ti][_hash] = _to;
         else
             require(
-                tokerOwner[_tokenId][_hash] == _to,
+                tokerOwner[ti][_hash] == _to,
                 "Ambiguity in to address"
             );
 
-        if (tokenStatus[_tokenId][_hash] == 0) {
-            require(tokenAuthSings[_tokenId][_hash][_signerPublicKey] == false);
-            tokenData[_tokenId][_hash].oracleContract = address(this);
-            tokenData[_tokenId][_hash].groupId = groupId;
-            tokenData[_tokenId][_hash].hash = _hash;
-            tokenData[_tokenId][_hash].assetType = _assetType;
-            tokenData[_tokenId][_hash].state = _state;
-            tokenData[_tokenId][_hash].to = _to;
-            tokenData[_tokenId][_hash].toAlias = _toAlias;
-            tokenData[_tokenId][_hash].issueDateTime = now;
-            tokenData[_tokenId][_hash].url = _url;
-            tokenData[_tokenId][_hash].authorities.push(_signerPublicKey);
-            tokenData[_tokenId][_hash].authoritiesAlias.push(
+        if (tokenStatus[ti][_hash] == 0) {
+            require(htokenAuthSings[ti][_hash][_signerPublicKey] == false);
+           
+             tokenData[ti][ipfshash.digest].ipfshash = ipfshash;
+            
+             tokenData[ti][ipfshash.digest].authorities.push(_signerPublicKey);
+             tokenData[ti][ipfshash.digest].authoritiesAlias.push(
                 signerAddressAlias[_signerPublicKey]
             );
-            tokenData[_tokenId][_hash].sigR.push(_sigR);
-            tokenData[_tokenId][_hash].sigS.push(_sigS);
-            tokenData[_tokenId][_hash].sigV.push(_sigV);
+           
 
-            tokenAuthSings[_tokenId][_hash][_signerPublicKey] = true;
-            tokenStatus[_tokenId][_hash] = 1;
-        } else if (tokenStatus[_tokenId][_hash] == 1) {
-            require(tokenAuthSings[_tokenId][_hash][_signerPublicKey] == false);
-            require(tokenData[_tokenId][_hash].state == _state);
-            require(tokenData[_tokenId][_hash].oracleContract == address(this));
-            tokenData[_tokenId][_hash].authorities.push(_signerPublicKey);
-            tokenData[_tokenId][_hash].authoritiesAlias.push(
+            tokenAuthSings[ti][ipfshash.digest][_signerPublicKey] = true;
+            tokenStatus[ti][ipfshash.digest] = 1;
+        } else if (tokenStatus[ti][ipfshash.digest] == 1) {
+            require(tokenAuthSings[ti][ipfshash.digest][_signerPublicKey] == false);
+            require(tokenData[ti][ipfshash.digest].ipfshash.digest == _digest);
+            tokenData[ti][ipfshash.digest].authorities.push(_signerPublicKey);
+            tokenData[ti][ipfshash.digest].authoritiesAlias.push(
                 signerAddressAlias[_signerPublicKey]
             );
-            tokenData[_tokenId][_hash].sigR.push(_sigR);
-            tokenData[_tokenId][_hash].sigS.push(_sigS);
-            tokenData[_tokenId][_hash].sigV.push(_sigV);
-            tokenAuthSings[_tokenId][_hash][_signerPublicKey] = true;
+            tokenAuthSings[ti][ipfshash.digest][_signerPublicKey] = true;
         }
         if (
-            tokenData[_tokenId][_hash].authorities.length == minSignerRequired
+            tokenData[ti][ipfshash.digest].authorities.length == minSignerRequired
         ) {
             CertToken.mintOrTransfer(
-                tokerOwner[_tokenId][_hash],
-                _tokenId,
-                tokenData[_tokenId][_hash]
+                _to,
+                ti,
+                tokenData[ti][ipfshash.digest]
             );
-            tokenStatus[_tokenId][_hash] = 2;
-            delete tokenData[_tokenId][_hash];
+            tokenStatus[ti][ipfshash.digest] = 2;
+            delete tokenData[ti][ipfshash.digest];
         }
+        return oldipfs;
     }
 
     function addWhitelistedbySign(

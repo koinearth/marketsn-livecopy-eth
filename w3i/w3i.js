@@ -4,8 +4,21 @@ const config = require("../config");
 const ethers = require("ethers");
 const initNonce = 0;
 const noncemanager = require("../utils/nonceManager.js");
+const CID = require('cids')
+const bs58 = require('bs58');
 
 noncemanager.getInstance(initNonce, web3Util.nonceFunction);
+
+function getBytes32FromMultiash(multihash) {
+  const decoded = bs58.decode(multihash);
+
+  return {
+    digest: `0x${decoded.slice(2).toString('hex')}`,
+    hashFunction: decoded[0],
+    size: decoded[1],
+  };
+}
+
 
 const createGroup = async function (
   _groupId,
@@ -47,6 +60,7 @@ const acceptGroup = async function (
     _factoryContractAddress,
     _factoryAbi
   );
+  console.log(config.port)
 
   logger.debug(adminAddr);
 
@@ -137,20 +151,32 @@ const issueCert = async function (
   _state,
   _assetType,
   _url,
+  _ipfshash,
   _factoryContractAddress,
   _factoryAbi,
   _adminAbi
+  
 ) {
   let nonce = 0;
   let state = ethers.utils.formatBytes32String(_state);
   let assetType = ethers.utils.formatBytes32String(_assetType);
   let docHash = String(_docHash).padEnd(66, "0");
-  logger.log("padded hash", docHash);
+
+  // var buffer = Buffer.from(_ipfshash)
+  // var ipfshash = buffer.toString('hex')
+  // logger.log("padded hash", docHash);
+  // console.log(ipfshash)
+  const multihash = getBytes32FromMultiash(_ipfshash)
+  
+  
   const adminAddr = await getGroupContractAddress(
     _groupId,
     _factoryContractAddress,
     _factoryAbi
   );
+  console.log(_groupId)
+  console.log(adminAddr)
+
   logger.debug(adminAddr);
   let adminContractInstance = web3Util.getContractInstance(
     adminAddr,
@@ -180,9 +206,9 @@ const issueCert = async function (
             sig.r,
             sig.s,
             sig.v,
-            state,
-            assetType,
-            _url,
+            multihash.digest,
+            multihash.hashFunction,
+            multihash.size,
             { gasLimit: 1800000, nonce: nonce - 1 }
           );
         } catch (err) {
@@ -199,9 +225,9 @@ const issueCert = async function (
             sig.r,
             sig.s,
             sig.v,
-            state,
-            assetType,
-            _url,
+            multihash.digest,
+            multihash.hashFunction,
+            multihash.size,
             { gasLimit: 1800000 }
           );
         } catch (err) {
@@ -221,68 +247,87 @@ const getCert = async function (_assetId, _tokenContractAddress, _tokenAbi) {
     _tokenContractAddress,
     _tokenAbi
   );
-  //logger.debug(tokenContractInstance)
+  console.log(_tokenContractAddress)
+  
+  
 
   logger.debug(web3Util.stringToIntEncode(_assetId));
   let result = await tokenContractInstance.getToken(
     web3Util.stringToIntEncode(_assetId)
   );
+  
+
 
   logger.debug(result);
-  var formatedResult = {};
+  console.log(result._tokenData[0][0].digest)
 
-  formatedResult.ownerAddr = result._owner;
-  formatedResult.ownerOrgId = ethers.utils.parseBytes32String(
-    result._tokenData[0].toAlias
-  );
-  formatedResult.ownerOrgName =
-    config.orgMapping[
-      ethers.utils.parseBytes32String(result._tokenData[0].toAlias)
-    ];
-  formatedResult.oracleContract = result._tokenData[0].oracleContract;
-  formatedResult.groupId = ethers.utils.parseBytes32String(
-    result._tokenData[0].groupId
-  );
-  formatedResult.assetType = ethers.utils.parseBytes32String(
-    result._tokenData[0].assetType
-  );
+  const hashBytes = Buffer.from(result._tokenData[0][0].digest.slice(2), 'hex');
 
-  formatedResult.history = [];
+  
+  const multihashBytes = new (hashBytes.constructor)(2 + hashBytes.length);
+  multihashBytes[0] = result._tokenData[0][0].hashFunction;
+  multihashBytes[1] = result._tokenData[0][0].size;
+  multihashBytes.set(hashBytes, 2);
 
-  for (var i in result._tokenData) {
-    var formatedtokenData = {};
-    //formatedtokenData.oracleContract = result._tokenData[i].oracleContract;
-    formatedtokenData.state = ethers.utils.parseBytes32String(
-      result._tokenData[i].state
-    );
-    formatedtokenData.hash = result._tokenData[i].hash;
-    formatedtokenData.url = result._tokenData[i].url;
-    let tempDate = new Date(
-      result._tokenData[i].issueDateTime.toNumber() * 1000
-    );
-    formatedtokenData.issueDateTime = tempDate.toISOString();
-    formatedtokenData.signatures = {};
-    for (var j in result._tokenData[i].authorities) {
-      let sig = await ethers.utils.joinSignature({
-        r: result._tokenData[i].sigR[j],
-        s: result._tokenData[i].sigS[j],
-        v: result._tokenData[i].sigV[j],
-        recoveryParam: 0,
-      });
-      formatedtokenData.signatures[
-        config.orgMapping[
-          ethers.utils.parseBytes32String(
-            result._tokenData[i].authoritiesAlias[j]
-          )
-        ]
-      ] = sig;
-    }
-    logger.debug(formatedtokenData);
-    formatedResult.history.push(formatedtokenData);
-  }
-  logger.debug(formatedResult);
+  
 
-  return formatedResult;
+
+
+
+  // var formatedResult = {};
+
+  // formatedResult.ownerAddr = result._owner;
+  // formatedResult.ownerOrgId = ethers.utils.parseBytes32String(
+  //   result._tokenData[0].toAlias
+  // );
+  // formatedResult.ownerOrgName =
+  //   config.orgMapping[
+  //     ethers.utils.parseBytes32String(result._tokenData[0].toAlias)
+  //   ];
+  // formatedResult.oracleContract = result._tokenData[0].oracleContract;
+  // formatedResult.groupId = ethers.utils.parseBytes32String(
+  //   result._tokenData[0].groupId
+  // );
+  // formatedResult.assetType = ethers.utils.parseBytes32String(
+  //   result._tokenData[0].assetType
+  // );
+
+  // formatedResult.history = [];
+
+  // for (var i in result._tokenData) {
+  //   var formatedtokenData = {};
+  //   //formatedtokenData.oracleContract = result._tokenData[i].oracleContract;
+  //   formatedtokenData.state = ethers.utils.parseBytes32String(
+  //     result._tokenData[i].state
+  //   );
+  //   formatedtokenData.hash = result._tokenData[i].hash;
+  //   formatedtokenData.url = result._tokenData[i].url;
+  //   let tempDate = new Date(
+  //     result._tokenData[i].issueDateTime.toNumber() * 1000
+  //   );
+  //   formatedtokenData.issueDateTime = tempDate.toISOString();
+  //   formatedtokenData.signatures = {};
+  //   for (var j in result._tokenData[i].authorities) {
+  //     let sig = await ethers.utils.joinSignature({
+  //       r: result._tokenData[i].sigR[j],
+  //       s: result._tokenData[i].sigS[j],
+  //       v: result._tokenData[i].sigV[j],
+  //       recoveryParam: 0,
+  //     });
+  //     formatedtokenData.signatures[
+  //       config.orgMapping[
+  //         ethers.utils.parseBytes32String(
+  //           result._tokenData[i].authoritiesAlias[j]
+  //         )
+  //       ]
+  //     ] = sig;
+  //   }
+  //   logger.debug(formatedtokenData);
+  //   formatedResult.history.push(formatedtokenData);
+  // }
+  // logger.debug(formatedResult);
+
+  return `https://ipfs.infura.io/ipfs/${bs58.encode(multihashBytes)}`;
 };
 
 module.exports = {
